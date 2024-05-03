@@ -1,0 +1,355 @@
+WALMART SALES PORTFOLIO PROJECT 
+
+create database if not exists salesDataWalmart;
+
+Create table if not exists sales(
+invoice_id varchar(30) not null primary key,
+branch varchar(5) not null,
+city varchar(30) not null,
+customer_type varchar(30) not null,
+gender varchar(10) not null,
+product_line varchar(100) not null,
+unit_price decimal(10,2) not null,
+quantity int not null,
+VAT float(6,4) not null,
+total decimal(12,4) not null,
+date datetime not null,
+time time not null,
+payment_mehtod varchar(15) not null,
+cogs decimal(10,2) not null,
+gross_margin_pct float(11,9),
+gross_income decimal(12,4) not null,
+rating float(2,1)
+);
+
+Feature Engineering : This will help us to generate some new columns from existing ones.
+-- ---1). Add new column named [time_of_day] --- 
+SELECT
+	time,
+	(CASE
+		WHEN `time` BETWEEN "00:00:00" AND "12:00:00" THEN "Morning"
+        WHEN `time` BETWEEN "12:01:00" AND "16:00:00" THEN "Afternoon"
+        ELSE "Evening"
+    END) AS time_of_day
+FROM sales;
+
+alter table sales
+add column time_of_day varchar(20);
+
+update sales 
+set time_of_day = (
+    CASE
+		WHEN `time` BETWEEN "00:00:00" AND "12:00:00" THEN "Morning"
+        WHEN `time` BETWEEN "12:01:00" AND "16:00:00" THEN "Afternoon"
+        ELSE "Evening"
+    END
+);
+-- ---2). [Add DAYNAME COLUMN]---
+SELECT 
+    date, DAYNAME(date)
+FROM
+    sales;
+
+Alter table sales
+add column day_name varchar(10);
+
+UPDATE sales 
+SET 
+    day_name = DAYNAME(date);
+
+-- ---3). [ADD MONTH_NAME] COLUMN---
+SELECT 
+    date, MONTHNAME(date)
+FROM
+    sales;
+
+alter table sales
+add column month_name varchar(10);
+
+UPDATE sales 
+SET 
+    month_name = MONTHNAME(date);
+
+
+----GENERIC QUESTION.
+
+Q1).How manu unique product does the data have?
+SELECT DISTINCT
+    city
+FROM
+    sales
+
+Q2). IN which city is each branch?
+SELECT DISTINCT
+    city, branch
+FROM
+    sales
+
+------ PRODUCT QUESTION.
+1). how many unique product lines does the data have?
+SELECT DISTINCT
+    product_line
+FROM
+    sales
+
+2). What is the most common payment method?
+SELECT 
+    payment_mehtod, COUNT(payment_mehtod)
+FROM
+    sales
+GROUP BY payment_mehtod
+ORDER BY payment_mehtod DESC
+
+Q3). What is the most selling product line?
+SELECT 
+    SUM(quantity), product_line
+FROM
+    sales
+GROUP BY product_line
+ORDER BY SUM(quantity) DESC
+
+Q4). What is the total revenue by month?
+SELECT 
+    SUM(total) AS revenue, month_name
+FROM
+    sales
+GROUP BY month_name
+ORDER BY revenue
+
+Q5). What month had the largest COGS?
+SELECT 
+    SUM(cogs) AS cogs, month_name
+FROM
+    sales
+GROUP BY month_name
+ORDER BY cogs DESC
+
+Q6). What product line had the largest revenue?
+SELECT 
+    SUM(total) AS revenue, product_line
+FROM
+    sales
+GROUP BY product_line
+ORDER BY revenue DESC
+
+Q7). What is the city with largest revenue?
+SELECT 
+    SUM(total) AS revenue, city, branch
+FROM
+    sales
+GROUP BY city , branch
+ORDER BY revenue DESC
+
+Q8).What product line had the largest VAT?
+SELECT 
+    product_line, SUM(VAT) AS vat
+FROM
+    sales
+GROUP BY product_line
+ORDER BY vat DESC
+
+Q9). fetch each product line and add a column to those product line "Good","Bad". Good if it is greater than avg. sale
+select product_line,
+(case 
+     WHEN avg(quantity)>6 then 'Good'
+     else 'Bad'
+end 
+) as remark
+from sales
+group by product_line
+
+Q10). Which branch sold more products than avg product sold?
+SELECT 
+    branch, SUM(quantity)
+FROM
+    sales
+GROUP BY branch
+HAVING SUM(quantity) > (SELECT 
+        AVG(quantity)
+    FROM
+        sales);
+
+Q11). What is the most common product line by gender?
+SELECT 
+    product_line, gender, COUNT(gender) AS total_cnt
+FROM
+    sales
+GROUP BY product_line , gender
+ORDER BY total_cnt DESC
+
+Q12). What is the avg. rating of each product line?
+SELECT 
+    product_line, ROUND(AVG(rating), 2)
+FROM
+    sales
+GROUP BY product_line
+ORDER BY AVG(rating) DESC 
+
+----CUSTOMER BASED QUESTIONS
+
+Q1). How many unique customer types does the data have?
+SELECT DISTINCT
+    customer_type
+FROM
+    sales
+
+Q2). How many unique payment method does the data have?
+SELECT DISTINCT
+    payment_mehtod
+FROM
+    sales
+
+Q3). What is the most common customer type?
+SELECT 
+    customer_type, COUNT(*)
+FROM
+    sales
+GROUP BY customer_type
+ORDER BY COUNT(*) DESC
+
+Q4). What is the gender of most of the customers?
+SELECT 
+    gender, COUNT(gender)
+FROM
+    sales
+GROUP BY gender
+ORDER BY COUNT(gender) DESC
+
+Q5). What is the gender distribution per branch?
+SELECT 
+    branch, gender, COUNT(gender)
+FROM
+    sales
+GROUP BY branch , gender
+ORDER BY COUNT(gender) DESC
+
+Q6). Which time of the day do customers give most ratings?
+SELECT 
+    time_of_day, SUM(rating)
+FROM
+    sales
+GROUP BY time_of_day
+ORDER BY SUM(rating) DESC
+
+Q7). Which time of day do customer give most ratings per branch?
+SELECT 
+    time_of_day, branch, SUM(rating)
+FROM
+    sales
+GROUP BY time_of_day , branch
+ORDER BY SUM(rating) DESC
+
+-- Q8). Which day of the week has the best avg. ratings?
+SELECT 
+    day_name, round(avg(rating),2) as avg_rate
+FROM
+    sales
+GROUP BY day_name
+ORDER BY avg_rate DESC
+
+-- Q9). what is the avg. rating of each product line?
+SELECT 
+    product_line, ROUND(AVG(rating), 3) AS avg_rate
+FROM
+    sales
+GROUP BY product_line
+ORDER BY avg_rate DESC
+
+-- -- SALES BASED QUESTIONS
+
+-- Q1). Number of sales made in each time of the day per week day?
+SELECT 
+    time_of_day, day_name, COUNT(total)
+FROM
+    sales
+GROUP BY time_of_day , day_name
+ORDER BY COUNT(total) DESC
+
+-- Q2). Which of the customer types bring most revenue?
+SELECT 
+    customer_type, SUM(total) AS revenue
+FROM
+    sales
+GROUP BY customer_type
+ORDER BY revenue DESC
+
+--  Q3). Which city has the largest tax percent/  VAT( Value Added Tax)?
+SELECT 
+    city, SUM(VAT) AS vat
+FROM
+    sales
+GROUP BY city
+ORDER BY vat
+
+Q4). Which customer type pays the most in VAT?
+SELECT 
+    customer_type, SUM(VAT) AS vat
+FROM
+    sales
+GROUP BY customer_type
+ORDER BY vat DESC
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
